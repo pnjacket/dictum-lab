@@ -1,27 +1,73 @@
 #!/usr/bin/env bash
-# Runs dictum-gate-check across the fixture corpus and asserts expected findings.
+# Runs the lab's tools across the fixture corpus and asserts expected findings.
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
-CHECK="$HERE/../tools/gate-check/dictum-gate-check.py"
+TOOLS="$HERE/../tools"
 FIX="$HERE/../fixtures"
 fail=0
 
-expect() { # <fixture> <expected-error-count> <required-pattern>
-  out=$(python3 "$CHECK" "$FIX/$1" 2>&1)
+# expect_tool <script> <fixture-dir> <label> <expected-error-count> <required-pattern>
+# For checkers that print gate-check-style findings + a "N error(s), ..." tail.
+expect_tool() {
+  out=$(python3 "$1" "$2" 2>&1)
   errs=$(echo "$out" | tail -1 | grep -o '^[0-9]\+')
-  if [ "$errs" != "$2" ]; then
-    echo "FAIL $1: expected $2 error(s), got $errs"; echo "$out" | sed 's/^/    /'; fail=1
-  elif [ -n "$3" ] && ! echo "$out" | grep -q "$3"; then
-    echo "FAIL $1: expected pattern not found: $3"; echo "$out" | sed 's/^/    /'; fail=1
+  if [ "$errs" != "$4" ]; then
+    echo "FAIL $3: expected $4 error(s), got $errs"; echo "$out" | sed 's/^/    /'; fail=1
+  elif [ -n "$5" ] && ! echo "$out" | grep -q "$5"; then
+    echo "FAIL $3: expected pattern not found: $5"; echo "$out" | sed 's/^/    /'; fail=1
   else
-    echo "PASS $1 ($2 error(s))"
+    echo "PASS $3 ($4 error(s))"
   fi
 }
 
-expect clean             0 ""
-expect partition-hole    1 "unaccounted"
-expect dangling-id       1 "dangling reference"
-expect unpublished-built 1 "publish step owed"
+# assert_grep <label> <pattern> <<< output ; assert_exit <label> <expected> <actual>
+assert_exit() {
+  if [ "$3" != "$2" ]; then echo "FAIL $1: expected exit $2, got $3"; fail=1; else echo "PASS $1 (exit $2)"; fi
+}
 
-[ "$fail" = 0 ] && echo "corpus: all fixtures pass" || echo "corpus: FAILURES"
+echo "== gate-check =="
+GATE="$TOOLS/gate-check/dictum-gate-check.py"
+expect_tool "$GATE" "$FIX/clean"             gate/clean             0 ""
+expect_tool "$GATE" "$FIX/partition-hole"    gate/partition-hole    1 "unaccounted"
+expect_tool "$GATE" "$FIX/dangling-id"       gate/dangling-id       1 "dangling reference"
+expect_tool "$GATE" "$FIX/unpublished-built" gate/unpublished-built 1 "publish step owed"
+
+echo "== code-map =="
+CODEMAP="$TOOLS/code-map/dictum-code-map.py"
+TMPJ=$(mktemp)
+trap 'rm -f "$TMPJ"' EXIT
+python3 "$CODEMAP" "$FIX/code-map/clean" --out "$TMPJ" && python3 - "$TMPJ" <<'EOF'
+import json, sys
+m = json.load(open(sys.argv[1]))
+ids = sorted(a['id'] for a in m['annotations'])
+assert ids == ['API-CREATE-NOTE', 'API-LIST-NOTES', 'COMPONENT-NOTES-VIEW',
+               'ENTITY-NOTE', 'SCREEN-NOTE-LIST'], ids
+assert m['unparsed_annotations'] == [], m['unparsed_annotations']
+oa = m['interfaces']['openapi']
+assert len(oa) == 1 and len(oa[0]['endpoints']) == 2, oa
+assert oa[0]['schemas'] == [{'fields': ['body', 'id', 'title'], 'name': 'Note',
+                             'required': ['id', 'title']}], oa[0]['schemas']
+assert len(m['interfaces']['json_schema']) == 1, m['interfaces']['json_schema']
+keys = sorted(k['name'] for k in m['config_keys']['keys'])
+assert keys == ['NOTES_ADDR', 'NOTES_API_BASE', 'NOTES_DB_PATH'], keys
+assert m['config_keys']['heuristic'] is True
+assert m['tiers']['config_keys']['tier'] == 'heuristic'
+EOF
+assert_exit "code-map/clean" 0 $?
+python3 "$CODEMAP" "$FIX/code-map/annotation-syntax-unsupported" --out "$TMPJ" && python3 - "$TMPJ" <<'EOF'
+import json, sys
+m = json.load(open(sys.argv[1]))
+# The certain tier extracts only the conforming annotation; the two
+# non-conforming ones are DECLINED loudly, never guessed.
+assert [a['id'] for a in m['annotations']] == ['CAP-NOTES'], m['annotations']
+assert len(m['unparsed_annotations']) == 2, m['unparsed_annotations']
+texts = ' '.join(u['text'] for u in m['unparsed_annotations'])
+assert 'CAP-TAGS' in texts and 'cap-search' in texts, texts
+EOF
+assert_exit "code-map/annotation-syntax-unsupported (declines loudly)" 0 $?
+# Determinism: two runs must be byte-identical.
+a=$(python3 "$CODEMAP" "$FIX/code-map/clean") ; b=$(python3 "$CODEMAP" "$FIX/code-map/clean")
+[ "$a" = "$b" ] && echo "PASS code-map/deterministic-output" || { echo "FAIL code-map/deterministic-output"; fail=1; }
+
+[ "$fail" = 0 ] && echo && echo "corpus: all fixtures pass" || { echo; echo "corpus: FAILURES"; }
 exit $fail
