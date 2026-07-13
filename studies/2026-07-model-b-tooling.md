@@ -42,7 +42,7 @@ success result** (encoded in output shapes and asserted by tests).
 
 | Surface | Verdict | Precondition / note |
 |---|---|---|
-| In-code contract-ID annotations (`// DICT: <ID>`, common comment leaders) | **decidable** | the annotation convention (Part 10f). A non-conforming annotation (unsupported leader, non-grammar ID) is *detectably* non-conforming — surfaced in `unparsed_annotations`, never guessed |
+| In-code contract-ID annotations (the `DICT: <ID>` marker token in a host-language comment) | **decidable** | the annotation convention (Part 10f) — the standard fixes the token grammar only, not the comment leader. A token this scanner cannot parse (a leader outside its list, a non-grammar ID) surfaces in `unparsed_annotations`, never guessed; an uncovered leader is a *scanner* limitation, not non-conformance |
 | Endpoint/schema inventory | **decidable** | only where a committed/build-emitted machine-readable artifact exists (OpenAPI JSON / plain-YAML-subset, JSON Schema) — the roadmap's named model-B path |
 | Routes/entities out of bare source (no artifact) | **undecided-yet** | per-stack AST/route extractors; the output schema reserves `interfaces` families for them |
 | Env-key surface | **heuristic, permanently** | regex over source can't see indirection/computed keys; emitted as inventory under an explicit heuristic tier, never a finding |
@@ -118,6 +118,15 @@ never — repo-wins is a rule, not a judgment); triage adjudication
 
 ## Findings about the standard (candidates to fold back)
 
+- **The in-code annotation convention embedded a language assumption —
+  folded back.** The standard's earlier wording pinned the annotation as
+  `// DICT: <ID>`, but `//` is not a comment leader in every language, and
+  the standard does not control language choice — the
+  `annotation-syntax-unsupported` fixture (a `;;`-led token) is exactly the
+  case a leader-pinned convention silently excludes. *Realized:* the
+  standard now fixes **only the token grammar** (`DICT: <ID>` in any
+  host-language comment) as the machine-extraction extension point; leader
+  coverage is a property of a given scanner, not of conformance.
 - **The register-form minting convention is now load-bearing for three
   tools** (gate-check, drift-check, tracker-sync's build gate) — reinforces
   the open gate-check-study item to state it normatively.

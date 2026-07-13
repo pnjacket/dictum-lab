@@ -7,6 +7,12 @@
 > canonical repository, under its signed releases — is the only normative
 > artifact. The tools here *check* the standard; the studies here *test* it;
 > where a tool and the text disagree, the text wins and the tool has a bug.
+>
+> The tools are **research instruments and worked examples**, not supported
+> products. Each demonstrates what a deterministic tool can decide with
+> certainty against the standard's fixed extension points (e.g. the
+> `DICT: <ID>` in-code marker grammar) — the boundary maps in `studies/` are
+> the finding; anyone can build their own tooling against the same surface.
 
 ## Why a separate repository
 
