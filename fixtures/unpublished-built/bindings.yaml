@@ -1,0 +1,4 @@
+bindings:
+  CAP-001:
+    locators:
+      - { path: src/main.py, symbol: main }
