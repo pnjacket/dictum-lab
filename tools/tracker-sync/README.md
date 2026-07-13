@@ -65,6 +65,13 @@ projection → CLOSE (it did not derive from the repo).
 
 ## Declaration file (tool convention)
 
+The standard deliberately pins only the declaration's *semantics* (the 11.6
+tracker-binding declaration: mirror invariant, item roles, gates), never a
+file shape — how execution items are tracked does not matter as long as they
+are tracked, so binding a shape would privilege one tracker workflow over
+others. The shape below is this example's suggestion; any tool that reads
+the same semantics conforms just as well.
+
 ```yaml
 # tracker-binding.yaml (repo root or docs/)
 tracker_binding:

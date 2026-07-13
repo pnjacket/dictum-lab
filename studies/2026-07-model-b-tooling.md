@@ -128,16 +128,22 @@ never — repo-wins is a rule, not a judgment); triage adjudication
   host-language comment) as the machine-extraction extension point; leader
   coverage is a property of a given scanner, not of conformance.
 - **The register-form minting convention is now load-bearing for three
-  tools** (gate-check, drift-check, tracker-sync's build gate) — reinforces
-  the open gate-check-study item to state it normatively.
+  tools** (gate-check, drift-check, tracker-sync's build gate). *Realized:*
+  the standard states the register-line form as a normative bar (Part 5) —
+  the second fixed extension point after the marker-token grammar.
 - **A doc-side machine-readable route/field convention would move
-  `route-diff`/field-diff from convention-dependent to plainly decidable** —
-  today the `METHOD /path`-on-register-line pattern is idiomatic but
-  unstated; the binding map's `compare_via` is the only normative model-B
-  hook.
+  `route-diff`/field-diff from convention-dependent to plainly decidable.**
+  *Adjudicated — stays out of the standard:* OpenAPI comparison is dominant
+  but not the only way to state an interface machine-readably, and the
+  standard binds to a form only where there is one way; the
+  `METHOD /path`-on-register-line pattern remains a suggested convention
+  demonstrated by this example (the binding map's `compare_via` stays the
+  only normative hook).
 - **The tracker-binding declaration has no pinned machine-readable form**;
-  this tool had to invent one. If sync tooling is ever blessed, 11.6 may
-  want to pin (or bless a shape for) the declaration file.
+  this tool had to invent one. *Adjudicated — stays out of the standard:*
+  the semantics are what matter (tracked is tracked, whatever the shape);
+  pinning a file shape would privilege one tracker workflow. The
+  `tracker-binding.yaml` shape remains this example's suggestion.
 
 ## Open questions
 
