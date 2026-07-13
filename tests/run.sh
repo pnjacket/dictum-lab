@@ -93,5 +93,34 @@ assert ev[0]['classification'] == 'proposed' and ev[0]['adjudication'] == 'pendi
 EOF
 assert_exit "drift/json-map-mode (Part 10d change-event shape)" 0 $?
 
+echo "== reverse-extract =="
+REVX="$TOOLS/reverse-extract/dictum-reverse-extract.py"
+out=$(python3 "$REVX" "$FIX/code-map/clean") ; rc=$?
+ok=1
+[ $rc -eq 0 ] || ok=0
+echo "$out" | grep -q "DRAFT" || ok=0
+echo "$out" | grep -q "\[ASSUMPTION\]" || ok=0
+# recovered annotation IDs land as real draft bindings...
+echo "$out" | grep -q "^  API-LIST-NOTES:" || ok=0
+# ...coined artifact candidates stay commented stubs (identity not decidable)...
+echo "$out" | grep -q "# API-GET-NOTES:" || ok=0
+# ...a coined ID equal to a recovered one merges instead of duplicating...
+echo "$out" | grep -q '"provenance": "recovered+artifact"' || ok=0
+# ...and the un-extractables are DECLINED loudly, not guessed.
+echo "$out" | grep -q "deliberately excluded" || ok=0
+echo "$out" | grep -qi "no rung and no Verified claim" || ok=0
+[ $ok -eq 1 ] && echo "PASS reverse-extract/clean (draft + declines)" || { echo "FAIL reverse-extract/clean"; echo "$out" | head -40 | sed 's/^/    /'; fail=1; }
+# Determinism: two runs must be byte-identical.
+b=$(python3 "$REVX" "$FIX/code-map/clean")
+[ "$out" = "$b" ] && echo "PASS reverse-extract/deterministic-output" || { echo "FAIL reverse-extract/deterministic-output"; fail=1; }
+# --out writes the three files, and refuses to write into the repo itself.
+TMPD=$(mktemp -d)
+python3 "$REVX" "$FIX/code-map/clean" --out "$TMPD/rx" >/dev/null
+[ -f "$TMPD/rx/candidate-inventory.json" ] && [ -f "$TMPD/rx/bindings.draft.yaml" ] && [ -f "$TMPD/rx/recoverability-report.md" ] \
+  && echo "PASS reverse-extract/--out" || { echo "FAIL reverse-extract/--out"; fail=1; }
+python3 "$REVX" "$FIX/code-map/clean" --out "$FIX/code-map/clean" >/dev/null 2>&1
+assert_exit "reverse-extract/refuses-repo-root" 2 $?
+rm -rf "$TMPD"
+
 [ "$fail" = 0 ] && echo && echo "corpus: all fixtures pass" || { echo; echo "corpus: FAILURES"; }
 exit $fail
