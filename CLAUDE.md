@@ -33,16 +33,39 @@ not a style preference.
 
 ## Conventions
 
-- `tools/gate-check/dictum-gate-check.py` is **zero-dependency by design**
-  (Python 3 stdlib only) — do not add imports outside the standard library.
-  Manifests/front-matter it reads are constrained to the plain YAML subset the
-  standard's templates use; keep the built-in parser in sync with that subset.
-- Every fixture under `fixtures/` is self-contained: it vendors a **mini**
-  standard (just the concern-spec tables the checks need) and pins the
-  standard version it targets in its README line. Broken fixtures encode
-  exactly one defect each, named by the directory.
-- `tests/run.sh` must pass before any commit that touches the checker or the
-  fixtures.
+- **All tools are zero-dependency by design** (Python 3 stdlib only) — do not
+  add imports outside the standard library. Manifests/front-matter are
+  constrained to the plain YAML subset the standard's templates use.
+- **Shared parsing lives in `tools/common/dictumlib.py`** (YAML subset, front
+  matter, doc-set discovery, ID grammar/registry, the register-form owned-ID
+  web); the newer tools import it relative to their own path and stay
+  runnable as standalone scripts. **`gate-check` keeps its own inline copy on
+  purpose** (single-file distribution) — a change to the subset or the
+  grammar must land in **both**, verified by `tests/run.sh`.
+- **Tools are research instruments, not products.** The question each answers
+  is what model B can decide **with certainty** and where certainty ends:
+  prefer a small provably-sound check surface over broad heuristics; anything
+  heuristic is tiered explicitly (never exit-code-driving, WARN at most); and
+  where a tool cannot decide it **declines loudly** (`not-decidable` /
+  `unparsed_*` outputs) — declining is a success result, encoded in tests.
+  The determinism-boundary map lives in the studies; keep it current when a
+  class moves between decidable / undecided-yet / undecidable.
+- Every fixture under `fixtures/` is self-contained and pins the standard
+  version it targets in its `FIXTURE.md` line. Doc-set fixtures vendor a
+  **mini** standard (just the concern-spec tables the checks need); pure-code
+  fixtures (e.g. `fixtures/code-map/`) need none. Broken fixtures encode
+  exactly one defect each, named by the directory; **boundary probes**
+  (asserting a loud decline, not a detection) are first-class fixtures too.
+  Gate-check's corpus sits at `fixtures/` top level (historical); newer tools
+  use `fixtures/<tool>/`.
+- Fixture products are **invented shapes** ("a note-taking service") — the
+  describe-by-shape rule applies to fixtures as much as to studies.
+- `tests/run.sh` must pass before any commit that touches a tool or the
+  fixtures; it also asserts byte-identical re-runs (determinism is testable).
 - Studies go under `studies/` as `YYYY-MM-<slug>.md`, method before results,
   ground truth stated explicitly.
+- Tool READMEs state the non-normative rule explicitly: the standard's text
+  is the only definition of conformance; a disagreement is a bug **here**.
+- The `tracker-sync` github adapter shells out to `gh` and is **never invoked
+  in tests** — no network anywhere in tests.
 - Commit, don't push, until the operator says otherwise.
