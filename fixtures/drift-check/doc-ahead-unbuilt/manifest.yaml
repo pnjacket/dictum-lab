@@ -1,0 +1,11 @@
+concerns:
+  product-and-requirements:
+    in_scope: true
+    current_rung: contract-grade
+    target_rung: contract-grade
+    out_of_scope_subaspects: [personas]
+  interfaces-and-contracts:
+    in_scope: true
+    current_rung: contract-grade
+    target_rung: contract-grade
+    out_of_scope_subaspects: []

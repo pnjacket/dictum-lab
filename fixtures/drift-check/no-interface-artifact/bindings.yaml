@@ -1,0 +1,10 @@
+bindings:
+  API-LIST-NOTES:
+    locators:
+      - { path: src/server.go, symbol: handleList }
+  API-CREATE-NOTE:
+    locators:
+      - { path: src/server.go, symbol: handleCreate }
+  ENTITY-NOTE:
+    locators:
+      - { path: src/note.py, symbol: Note }

@@ -69,5 +69,29 @@ assert_exit "code-map/annotation-syntax-unsupported (declines loudly)" 0 $?
 a=$(python3 "$CODEMAP" "$FIX/code-map/clean") ; b=$(python3 "$CODEMAP" "$FIX/code-map/clean")
 [ "$a" = "$b" ] && echo "PASS code-map/deterministic-output" || { echo "FAIL code-map/deterministic-output"; fail=1; }
 
+echo "== drift-check =="
+DRIFT="$TOOLS/drift-check/dictum-drift-check.py"
+expect_tool "$DRIFT" "$FIX/drift-check/clean"                  drift/clean                  0 ""
+expect_tool "$DRIFT" "$FIX/drift-check/dangling-binding"       drift/dangling-binding       1 "binding-stale"
+expect_tool "$DRIFT" "$FIX/drift-check/code-ahead-id"          drift/code-ahead-id          1 "code-ahead"
+expect_tool "$DRIFT" "$FIX/drift-check/doc-ahead-unbuilt"      drift/doc-ahead-unbuilt      1 "doc-ahead-unbuilt"
+expect_tool "$DRIFT" "$FIX/drift-check/openapi-endpoint-drift" drift/openapi-endpoint-drift 1 "route-diff"
+# Boundary probe: no artifact -> the tool must DECLINE LOUDLY, not guess.
+expect_tool "$DRIFT" "$FIX/drift-check/no-interface-artifact"  drift/no-interface-artifact  0 "not-decidable"
+# The pre-built --map path and --json events must agree with the live path.
+TMPJ2=$(mktemp)
+trap 'rm -f "$TMPJ" "$TMPJ2"' EXIT
+python3 "$CODEMAP" "$FIX/drift-check/code-ahead-id" --out "$TMPJ"
+python3 "$DRIFT" "$FIX/drift-check/code-ahead-id" --map "$TMPJ" --json > "$TMPJ2"
+python3 - "$TMPJ2" <<'EOF'
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d['counts']['error'] == 1, d['counts']
+ev = d['candidate_change_events']
+assert len(ev) == 1 and ev[0]['id'] == 'LIB-EXPORT' and ev[0]['direction'] == 'code-ahead', ev
+assert ev[0]['classification'] == 'proposed' and ev[0]['adjudication'] == 'pending', ev
+EOF
+assert_exit "drift/json-map-mode (Part 10d change-event shape)" 0 $?
+
 [ "$fail" = 0 ] && echo && echo "corpus: all fixtures pass" || { echo; echo "corpus: FAILURES"; }
 exit $fail

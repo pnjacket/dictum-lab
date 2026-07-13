@@ -1,0 +1,23 @@
+openapi: 3.0.3
+info:
+  title: notes service
+  version: 1.0.0
+paths:
+  /notes:
+    get:
+      operationId: listNotes
+      responses:
+        "200": { description: ok }
+    post:
+      operationId: createNote
+      responses:
+        "201": { description: created }
+components:
+  schemas:
+    Note:
+      type: object
+      required: [id, title]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        body: { type: string }
