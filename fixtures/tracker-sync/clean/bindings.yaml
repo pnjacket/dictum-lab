@@ -1,0 +1,4 @@
+bindings:
+  API-LIST-NOTES:
+    locators:
+      - { path: src/main.py, symbol: list_notes }

@@ -1,0 +1,19 @@
+{
+  "next_key": 3,
+  "items": [
+    {
+      "key": 1,
+      "title": "Slice 1: list notes end-to-end",
+      "labels": ["dict-role:execution", "dict-slice:1", "dict:API-LIST-NOTES", "dict:CAP-NOTES"],
+      "state": "closed",
+      "body": "Execution item mirrored from the repo doc set (Dictum Part 10c: downstream mirror; repo wins). Realizes: API-LIST-NOTES, CAP-NOTES. Contracts live in the repo — reference only, never restate."
+    },
+    {
+      "key": 2,
+      "title": "Please add tags to notes",
+      "labels": ["dict-role:demand"],
+      "state": "open",
+      "body": "A user request — demand role; the repo does not own this; the tool must never touch it."
+    }
+  ]
+}

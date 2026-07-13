@@ -122,5 +122,39 @@ python3 "$REVX" "$FIX/code-map/clean" --out "$FIX/code-map/clean" >/dev/null 2>&
 assert_exit "reverse-extract/refuses-repo-root" 2 $?
 rm -rf "$TMPD"
 
+echo "== tracker-sync =="
+TSYNC="$TOOLS/tracker-sync/dictum-tracker-sync.py"
+python3 "$TSYNC" "$FIX/tracker-sync/clean" > /dev/null
+assert_exit "tracker-sync/clean (in sync)" 0 $?
+out=$(python3 "$TSYNC" "$FIX/tracker-sync/tracker-ahead-item"); rc=$?
+{ [ $rc -eq 1 ] && echo "$out" | grep -q "UPDATE #1" && echo "$out" | grep -q "repo wins" \
+    && echo "$out" | grep -q "1 non-execution tracker item(s) untouched"; } \
+  && echo "PASS tracker-sync/tracker-ahead-item (repo-wins update)" \
+  || { echo "FAIL tracker-sync/tracker-ahead-item"; echo "$out" | sed 's/^/    /'; fail=1; }
+out=$(python3 "$TSYNC" "$FIX/tracker-sync/missing-execution-item"); rc=$?
+{ [ $rc -eq 1 ] && echo "$out" | grep -q "CREATE Slice 1"; } \
+  && echo "PASS tracker-sync/missing-execution-item (create)" \
+  || { echo "FAIL tracker-sync/missing-execution-item"; echo "$out" | sed 's/^/    /'; fail=1; }
+# --apply must converge (re-run clean) and mutate ONLY the tracker file
+# (the downstream-mirror invariant: no doc-set file is ever written).
+TMPD=$(mktemp -d)
+for f in tracker-ahead-item missing-execution-item; do
+  cp -r "$FIX/tracker-sync/$f" "$TMPD/$f"
+  python3 "$TSYNC" "$TMPD/$f" --apply > /dev/null
+  ok=$?
+  python3 "$TSYNC" "$TMPD/$f" > /dev/null
+  rerun=$?
+  changed=$(diff -rq "$FIX/tracker-sync/$f" "$TMPD/$f" | grep -cv "tracker.json")
+  if [ $ok -eq 0 ] && [ $rerun -eq 0 ] && [ "$changed" = "0" ]; then
+    echo "PASS tracker-sync/$f --apply (converges; only the tracker mutated)"
+  else
+    echo "FAIL tracker-sync/$f --apply (apply=$ok rerun=$rerun non-tracker-diffs=$changed)"; fail=1
+  fi
+done
+rm -rf "$TMPD"
+# A missing declaration is DECLINED loudly (exit 2), never guessed.
+python3 "$TSYNC" "$FIX/code-map/clean" >/dev/null 2>&1
+assert_exit "tracker-sync/no-declaration (declines)" 2 $?
+
 [ "$fail" = 0 ] && echo && echo "corpus: all fixtures pass" || { echo; echo "corpus: FAILURES"; }
 exit $fail

@@ -1,0 +1,11 @@
+# Tracker-binding declaration (Delivery Process 11.6) in the machine-readable
+# form dictum-tracker-sync consumes — a TOOL convention; the standard defines
+# the boundary semantics (Part 10c), not this file format.
+tracker_binding:
+  adapter: file
+  file: { path: tracker.json }
+  build_status: IMPLEMENTATION.md
+  channel:
+    id_label_prefix: "dict:"
+    slice_label_prefix: "dict-slice:"
+    role_label_prefix: "dict-role:"
