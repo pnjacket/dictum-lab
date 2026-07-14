@@ -378,6 +378,13 @@ function buildWeb(files) {
   });
 
   // --- bindings pass (gate-check parity) + code edges
+  // gate-check's locator existence check is os.path.exists — directories
+  // count. A flat file index can't hold directories, so derive them.
+  var dirPrefixes = new Set();
+  byPath.forEach(function (_, p) {
+    var parts = p.split('/');
+    for (var i = 1; i < parts.length; i++) dirPrefixes.add(parts.slice(0, i).join('/'));
+  });
   var codeFiles = new Set();
   if (bindings) {
     var relB = d.bindingsPath;
@@ -399,12 +406,13 @@ function buildWeb(files) {
           if (!loc || typeof loc !== 'object') return;
           var pth = loc.path, sym = loc.symbol;
           if (!pth) return;
-          if (!byPath.has(pth)) {
+          if (!byPath.has(pth) && !dirPrefixes.has(pth)) {
             finding('ERROR', 'bindings', relB + '::' + key, 'locator path missing: ' + pth);
             return;
           }
-          var f = byPath.get(pth);
-          if (sym && String(sym).indexOf(' ') < 0 && f.text != null) {
+          // a directory locator exists but gets no symbol probe (isfile parity)
+          var f = byPath.has(pth) ? byPath.get(pth) : null;
+          if (f && sym && String(sym).indexOf(' ') < 0 && f.text != null) {
             var probe = String(sym).split('.').pop();   // dotted composite symbols
             if (f.text.indexOf(probe) < 0) {
               finding('WARN', 'bindings', relB + '::' + key,
@@ -538,29 +546,69 @@ return api;
 });
 
 // ---------- Node CLI (what tests/run.sh executes; not reached in a browser)
+//   node idweb.js <repo-root>              findings run (exit 1 on errors)
+//   node idweb.js <repo-root> --data <out> also write a snapshot data file
+//                                          (window.__DICTUM_TEST_FILES__ = …)
+//                                          the viewer's test hook consumes
 if (typeof require !== 'undefined' && typeof module !== 'undefined' &&
     require.main === module) {
   var fs = require('fs'), path = require('path');
   var DictumIdweb = module.exports;
-  var root = process.argv[2];
-  if (!root) { console.error('usage: node idweb.js <repo-root>'); process.exit(2); }
-  var SKIP = { '.git': 1, node_modules: 1, __pycache__: 1, vendor: 1 };
-  var files = [];
+  var argv = process.argv.slice(2);
+  var dataOut = null, di = argv.indexOf('--data');
+  if (di >= 0) { dataOut = argv[di + 1]; argv.splice(di, 2); }
+  var root = argv[0];
+  if (!root) { console.error('usage: node idweb.js <repo-root> [--data <out.js>]'); process.exit(2); }
+  var SKIP = { '.git': 1, node_modules: 1, __pycache__: 1, vendor: 1, dist: 1, build: 1 };
+  var MAX = 2 * 1024 * 1024;
+
+  // pass 1: paths only — a repo's full text does not fit in memory and is
+  // not needed; only docs, manifest/bindings, and binding-locator files are.
+  var paths = [];
   (function walk(dir) {
     fs.readdirSync(dir, { withFileTypes: true }).forEach(function (e) {
       if (SKIP[e.name]) return;
       var p = path.join(dir, e.name);
       if (e.isDirectory()) walk(p);
-      else if (e.isFile()) {
-        var rel = path.relative(root, p).split(path.sep).join('/');
-        var text = null;
-        try {
-          if (fs.statSync(p).size <= 2 * 1024 * 1024) text = fs.readFileSync(p, 'utf8');
-        } catch (err) { /* unreadable: existence-only */ }
-        files.push({ path: rel, text: text });
-      }
+      else if (e.isFile()) paths.push(path.relative(root, p).split(path.sep).join('/'));
     });
   })(root);
+
+  function readText(rel) {
+    var p = path.join(root, rel);
+    try {
+      if (fs.statSync(p).size <= MAX) return fs.readFileSync(p, 'utf8');
+    } catch (err) { /* unreadable: existence-only */ }
+    return null;
+  }
+
+  // pass 2: texts for the needed slice
+  var DOC_PATS = [/^docs\/[^/]+\.md$/, /^docs\/concerns\/[^/]+\.md$/, /^[^/]+\.md$/];
+  var need = new Set(['docs/manifest.yaml', 'manifest.yaml',
+                      'docs/bindings.yaml', 'bindings.yaml']);
+  paths.forEach(function (rel) {
+    if (DOC_PATS.some(function (r) { return r.test(rel); })) need.add(rel);
+  });
+  ['docs/bindings.yaml', 'bindings.yaml'].forEach(function (b) {
+    if (paths.indexOf(b) < 0) return;
+    var parsed = DictumIdweb.parseYamlSubset(readText(b) || '');
+    (function collectPaths(v) {   // every `path:` value anywhere in the map
+      if (Array.isArray(v)) v.forEach(collectPaths);
+      else if (v && typeof v === 'object') {
+        if (typeof v.path === 'string') need.add(v.path);
+        Object.keys(v).forEach(function (k) { collectPaths(v[k]); });
+      }
+    })(parsed);
+  });
+  var files = paths.map(function (rel) {
+    return { path: rel, text: need.has(rel) ? readText(rel) : null };
+  });
+
+  if (dataOut) {
+    fs.writeFileSync(dataOut,
+      'window.__DICTUM_TEST_FILES__ = ' + JSON.stringify(files) + ';\n');
+    console.log('snapshot data written: ' + dataOut + ' (' + files.length + ' paths)');
+  }
   var model = DictumIdweb.buildWeb(files);
   model.findings.forEach(function (f) {
     console.log(f.sev.padEnd(5) + ' [' + f.check + '] ' + f.where + ' — ' + f.msg);
