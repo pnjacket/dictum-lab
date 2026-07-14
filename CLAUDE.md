@@ -36,12 +36,18 @@ not a style preference.
 - **All tools are zero-dependency by design** (Python 3 stdlib only) — do not
   add imports outside the standard library. Manifests/front-matter are
   constrained to the plain YAML subset the standard's templates use.
+  **One sanctioned exception:** a *browser* tool (`tools/idweb-viewer/`) may
+  vendor MIT-licensed JS libraries under its own `vendor/` — offline, no
+  build step, no network at runtime, license texts retained and inventoried
+  in `vendor/NOTICES.md`; never a CDN link, never an npm install.
 - **Shared parsing lives in `tools/common/dictumlib.py`** (YAML subset, front
   matter, doc-set discovery, ID grammar/registry, the register-form owned-ID
   web); the newer tools import it relative to their own path and stay
   runnable as standalone scripts. **`gate-check` keeps its own inline copy on
-  purpose** (single-file distribution) — a change to the subset or the
-  grammar must land in **both**, verified by `tests/run.sh`.
+  purpose** (single-file distribution), and **`idweb-viewer/idweb.js` is the
+  JS port** (browsers can't import Python) — a change to the subset or the
+  grammar must land in **all three**, verified by `tests/run.sh` (incl. a
+  js-vs-py byte-parity case).
 - **Tools are research instruments, not products.** The question each answers
   is what model B can decide **with certainty** and where certainty ends:
   prefer a small provably-sound check surface over broad heuristics; anything

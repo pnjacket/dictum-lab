@@ -33,7 +33,8 @@ entries and bar changes — through its normal versioned-release process.
 | [`tools/drift-check/`](tools/drift-check) | **`dictum-drift-check`** — the model-B drift detector (STANDARD Part 10d): binding-stale, code-ahead/doc-ahead, route/schema drift against build-emitted artifacts, coverage arithmetic. Tiered findings (certain vs heuristic); declines loudly where drift is not decidable. |
 | [`tools/reverse-extract/`](tools/reverse-extract) | **`dictum-reverse-extract`** — deterministic reverse-extraction (Part 10f): a DRAFT candidate inventory (recovered vs coined IDs), a DRAFT binding map, and a recoverability report of what model B cannot recover. |
 | [`tools/tracker-sync/`](tools/tracker-sync) | **`dictum-tracker-sync`** — the doc→tracker execution mirror (Part 10c): projects the derived backlog + build-status into a tracker and reconciles repo-wins. Adapters: `file` (mock, used by tests) and `github` (`gh` CLI). |
-| [`tools/common/`](tools/common) | `dictumlib.py` — the shared parsing module (YAML subset, front matter, ID grammar, owned-ID web) the newer tools import; gate-check keeps its own inline copy by design. |
+| [`tools/idweb-viewer/`](tools/idweb-viewer) | **`dictum-idweb-viewer`** — a browser-only (HTML/JS, offline, no build step) graph viewer for the owned-ID web: derives the web from register lines + manifest + binding map on every load (never stored — Part 0.5), draws it (vendored Cytoscape.js/dagre, MIT), and reports the gate-check-parity idweb/bindings findings. Same engine runs headless as `node idweb.js <repo-root>`. |
+| [`tools/common/`](tools/common) | `dictumlib.py` — the shared parsing module (YAML subset, front matter, ID grammar, owned-ID web) the newer tools import; gate-check keeps its own inline copy by design, and `idweb-viewer/idweb.js` is its JS port — the grammar lives in those three places, kept in sync by tests/run.sh. |
 | [`fixtures/`](fixtures) | Synthetic fixtures — conforming and deliberately broken — that regression-test the tooling without touching any real product. Each pins the standard version it targets; broken ones encode exactly one defect, named by directory; boundary probes assert that tools *decline* rather than guess. Top-level dirs belong to gate-check; per-tool corpora live under `fixtures/<tool>/`. |
 | [`studies/`](studies) | Trial write-ups. Products are described **by shape** (traits, scale, build history), never by name. |
 | [`PROTOCOL.md`](PROTOCOL.md) | How trials are run, so the method behind the evidence is reproducible. |
@@ -53,6 +54,10 @@ python3 tools/reverse-extract/dictum-reverse-extract.py <repo-root> --out /tmp/d
 
 # project the repo's execution items into its declared tracker (dry-run)
 python3 tools/tracker-sync/dictum-tracker-sync.py <repo-root>
+
+# view the owned-ID web as a graph (or run the same checks headless)
+xdg-open tools/idweb-viewer/dictum-idweb-viewer.html   # then open a repo folder
+node tools/idweb-viewer/idweb.js <repo-root>
 
 # run the fixture corpus
 tests/run.sh

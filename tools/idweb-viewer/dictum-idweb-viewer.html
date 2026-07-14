@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dictum ID-web viewer</title>
+<!--
+  dictum-idweb-viewer — render a Dictum doc set's owned-ID web as a graph and
+  surface its decidable issues (dangling references, dangling bindings,
+  tombstone hygiene, orphans). Part of dictum-lab (MIT). NON-NORMATIVE: the
+  standard's text is the only definition of conformance; where this tool
+  disagrees with the text, the text wins and this tool has a bug.
+
+  Everything runs locally in the browser — no server, no network. Open this
+  file directly (file:// works) and point it at a doc-set folder.
+
+  Third-party (vendored, all MIT — see vendor/NOTICES.md):
+    cytoscape.min.js  (c) The Cytoscape Consortium
+    dagre.min.js      (c) Chris Pettitt
+    cytoscape-dagre.js (c) The Cytoscape Consortium
+-->
+<script src="vendor/cytoscape.min.js"></script>
+<script src="vendor/dagre.min.js"></script>
+<script src="vendor/cytoscape-dagre.js"></script>
+<script src="idweb.js"></script>
+<style>
+  :root {
+    /* dataviz reference palette, dark steps — categorical set validated
+       (lightness band, chroma floor, CVD >= floor-band w/ direct labels, 3:1) */
+    --surface-0: #121211; --surface-1: #1a1a19; --surface-2: #222220;
+    --line: #3a3a38; --ink: #f2f1ec; --ink-2: #c3c2b7; --ink-3: #8a8a85;
+    --k-interface: #3987e5; --k-domain: #199e70; --k-product: #c98500;
+    --k-invariant: #008300; --k-architecture: #9085e9; --k-ux: #d55181;
+    --k-opspolicy: #d95926; --k-other: #8a8a85;
+    --status-bad: #e66767; --status-warn: #c98500;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--surface-0); color: var(--ink);
+    font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: flex; flex-direction: column;
+  }
+  code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+  header {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 8px 12px; background: var(--surface-1); border-bottom: 1px solid var(--line);
+  }
+  header h1 { font-size: 14px; margin: 0 8px 0 0; font-weight: 600; white-space: nowrap; }
+  header h1 .dim { color: var(--ink-3); font-weight: 400; }
+  .btn {
+    background: var(--surface-2); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 6px; padding: 5px 10px; cursor: pointer; font-size: 12.5px;
+  }
+  .btn:hover { border-color: var(--ink-3); }
+  select, input[type=search] {
+    background: var(--surface-2); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 6px; padding: 4px 8px; font-size: 12.5px;
+  }
+  input[type=search] { width: 170px; }
+  label.opt { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+  #stats { color: var(--ink-2); font-size: 12px; margin-left: auto; white-space: nowrap; }
+  #stats b { color: var(--ink); font-weight: 600; }
+  .badge { display: inline-block; border-radius: 8px; padding: 0 7px; font-size: 11.5px; font-weight: 600; }
+  .badge.err  { background: #3a1d1d; color: var(--status-bad); }
+  .badge.warn { background: #362a12; color: var(--status-warn); }
+  .badge.ok   { background: #14301b; color: #58b96b; }
+
+  #legend {
+    display: flex; gap: 6px; flex-wrap: wrap; padding: 6px 12px;
+    background: var(--surface-1); border-bottom: 1px solid var(--line);
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 12px; padding: 2px 9px 2px 6px;
+    font-size: 11.5px; color: var(--ink-2); user-select: none;
+  }
+  .chip .sw { width: 9px; height: 9px; border-radius: 50%; }
+  .chip.off { opacity: 0.35; }
+  .chip .n { color: var(--ink-3); }
+
+  main { flex: 1; display: flex; min-height: 0; }
+  #cy { flex: 1; min-width: 0; background: var(--surface-0); position: relative; }
+  #empty {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 10px; color: var(--ink-3);
+    text-align: center; padding: 24px; pointer-events: none;
+  }
+  #empty .big { font-size: 15px; color: var(--ink-2); }
+
+  aside {
+    width: 380px; max-width: 45vw; border-left: 1px solid var(--line);
+    background: var(--surface-1); display: flex; flex-direction: column; min-height: 0;
+  }
+  aside .tabs { display: flex; border-bottom: 1px solid var(--line); }
+  aside .tabs button {
+    flex: 1; background: none; border: none; color: var(--ink-3); padding: 8px;
+    cursor: pointer; font-size: 12.5px; border-bottom: 2px solid transparent;
+  }
+  aside .tabs button.on { color: var(--ink); border-bottom-color: var(--k-interface); }
+  aside .pane { flex: 1; overflow: auto; padding: 8px 10px; display: none; }
+  aside .pane.on { display: block; }
+
+  .finding { padding: 6px 8px; border-radius: 6px; margin-bottom: 6px; cursor: pointer;
+             background: var(--surface-2); border-left: 3px solid var(--line); }
+  .finding:hover { background: #2a2a28; }
+  .finding.ERROR { border-left-color: var(--status-bad); }
+  .finding.WARN  { border-left-color: var(--status-warn); }
+  .finding .w { color: var(--ink-3); font-size: 11px; }
+  .finding .m { font-size: 12px; margin-top: 1px; }
+  .none { color: var(--ink-3); padding: 10px 4px; }
+
+  #inspector h2 { font-size: 13px; margin: 4px 0 2px; }
+  #inspector .kv { color: var(--ink-2); font-size: 12px; margin: 2px 0; }
+  #inspector .kv b { color: var(--ink-3); font-weight: 500; }
+  #inspector .reg {
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px 8px; font-size: 11.5px; margin: 6px 0; white-space: pre-wrap; word-break: break-word;
+  }
+  #inspector ul { margin: 4px 0 10px; padding-left: 16px; }
+  #inspector li { font-size: 12px; margin: 2px 0; }
+  #inspector a { color: var(--k-interface); cursor: pointer; text-decoration: none; }
+  #inspector a:hover { text-decoration: underline; }
+
+  footer {
+    padding: 5px 12px; background: var(--surface-1); border-top: 1px solid var(--line);
+    color: var(--ink-3); font-size: 11px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Dictum ID-web viewer <span class="dim">· dictum-lab</span></h1>
+  <button class="btn" id="openBtn">Open doc-set folder…</button>
+  <input type="file" id="dirInput" webkitdirectory multiple hidden>
+  <select id="layoutSel" title="Layout">
+    <option value="dagre-LR" selected>Layers →</option>
+    <option value="dagre-TB">Layers ↓</option>
+    <option value="cose">Organic</option>
+    <option value="concentric">Concentric</option>
+  </select>
+  <label class="opt"><input type="checkbox" id="optDocs"> group by doc</label>
+  <label class="opt"><input type="checkbox" id="optCode" checked> code bindings</label>
+  <label class="opt"><input type="checkbox" id="optOrph" checked> orphans</label>
+  <input type="search" id="searchBox" placeholder="find ID…">
+  <span id="stats"></span>
+</header>
+
+<div id="legend"></div>
+
+<main>
+  <div id="cy">
+    <div id="empty">
+      <div class="big">Open (or drop) a doc-set folder</div>
+      <div>the repo root that holds <span class="mono">manifest.yaml</span> / <span class="mono">docs/</span> / <span class="mono">bindings.yaml</span>.<br>
+      Everything is parsed locally in your browser; nothing leaves this page.</div>
+    </div>
+  </div>
+  <aside>
+    <div class="tabs">
+      <button id="tabFindings" class="on">Findings</button>
+      <button id="tabNode">Node</button>
+    </div>
+    <div class="pane on" id="paneFindings"><div class="none">No doc set loaded.</div></div>
+    <div class="pane" id="paneNode"><div class="none" id="inspector">Select a node.</div></div>
+  </aside>
+</main>
+
+<footer>
+  Non-normative: the Dictum standard's text is the only definition of conformance — a disagreement here is a bug here.
+  The graph is <em>derived</em> from the docs on every load (STANDARD Part 0.5: never stored).
+  Vendored libs: Cytoscape.js, dagre, cytoscape-dagre (MIT — <span class="mono">vendor/NOTICES.md</span>).
+</footer>
+
+<script>
+(function () {
+'use strict';
+var lib = window.DictumIdweb;
+
+// ---- palette (must mirror the CSS custom props above)
+var KIND_COLOR = {
+  interface: '#3987e5', domain: '#199e70', product: '#c98500',
+  invariant: '#008300', architecture: '#9085e9', ux: '#d55181',
+  opspolicy: '#d95926', other: '#8a8a85',
+};
+var KIND_SHAPE = { product: 'hexagon', invariant: 'diamond' };
+var EXTRA_LEGEND = [
+  { cls: 'tombstone', label: 'Tombstone', color: '#8a8a85' },
+  { cls: 'ghost', label: 'Dangling', color: '#e66767' },
+  { cls: 'code', label: 'Code', color: '#55554f' },
+  { cls: 'docnode', label: 'Doc', color: '#30302e' },
+];
+
+var model = null, cy = null, hiddenKinds = new Set();
+
+// ---- file loading (browser side of the Node CLI's walk)
+var SKIP_DIR = /(^|\/)(\.git|node_modules|__pycache__|vendor|dist|build)(\/|$)/;
+var TEXT_EXT = /\.(md|markdown|ya?ml|json|py|js|mjs|ts|tsx|jsx|go|rs|java|cs|rb|php|sh|bash|sql|html?|css|c|h|cpp|hpp|cc|clj|cljs|toml|ini|cfg|conf|txt|xml|svelte|vue|env|lock)$/i;
+var MAX_TEXT = 2 * 1024 * 1024;
+
+function relPath(webkitRelativePath) {
+  var parts = webkitRelativePath.split('/');
+  return parts.slice(1).join('/');   // strip the picked folder's own name
+}
+
+function loadFileList(fileObjs) {
+  var reads = [];
+  fileObjs.forEach(function (fo) {
+    var rel = fo.rel;
+    if (!rel || SKIP_DIR.test(rel)) return;
+    var wantText = fo.file.size <= MAX_TEXT &&
+      (TEXT_EXT.test(rel) || rel.indexOf('.') < 0 || /(^|\/)[^./]+$/.test(rel));
+    if (wantText) {
+      reads.push(fo.file.text().then(
+        function (t) { return { path: rel, text: t }; },
+        function () { return { path: rel, text: null }; }
+      ));
+    } else {
+      reads.push(Promise.resolve({ path: rel, text: null }));
+    }
+  });
+  Promise.all(reads).then(function (files) {
+    model = lib.buildWeb(files);
+    render();
+  });
+}
+
+document.getElementById('openBtn').onclick = function () {
+  document.getElementById('dirInput').click();
+};
+document.getElementById('dirInput').onchange = function (ev) {
+  var list = [];
+  for (var i = 0; i < ev.target.files.length; i++) {
+    var f = ev.target.files[i];
+    list.push({ file: f, rel: relPath(f.webkitRelativePath || f.name) });
+  }
+  loadFileList(list);
+};
+
+// drag & drop a folder
+document.body.addEventListener('dragover', function (e) { e.preventDefault(); });
+document.body.addEventListener('drop', function (e) {
+  e.preventDefault();
+  var items = e.dataTransfer.items, entries = [];
+  for (var i = 0; i < items.length; i++) {
+    var ent = items[i].webkitGetAsEntry && items[i].webkitGetAsEntry();
+    if (ent) entries.push(ent);
+  }
+  if (!entries.length) return;
+  var out = [], pending = 0, rootPrefix = entries.length === 1 && entries[0].isDirectory
+    ? entries[0].fullPath.replace(/^\//, '') + '/' : '';
+  function drain() { if (pending === 0) loadFileList(out); }
+  (function walk(list) {
+    list.forEach(function (ent) {
+      if (ent.isFile) {
+        pending++;
+        ent.file(function (f) {
+          var rel = ent.fullPath.replace(/^\//, '');
+          if (rootPrefix && rel.startsWith(rootPrefix)) rel = rel.slice(rootPrefix.length);
+          out.push({ file: f, rel: rel });
+          pending--; drain();
+        }, function () { pending--; drain(); });
+      } else if (ent.isDirectory && !SKIP_DIR.test(ent.fullPath)) {
+        pending++;
+        var rd = ent.createReader();
+        (function readAll() {
+          rd.readEntries(function (es) {
+            if (es.length) { walk(es); readAll(); }
+            else { pending--; drain(); }
+          }, function () { pending--; drain(); });
+        })();
+      }
+    });
+  })(entries);
+});
+
+// ---- rendering
+function opts() {
+  return {
+    groupByDoc: document.getElementById('optDocs').checked,
+    showCode: document.getElementById('optCode').checked,
+    showOrphans: document.getElementById('optOrph').checked,
+  };
+}
+
+function layoutDef() {
+  var v = document.getElementById('layoutSel').value;
+  if (v === 'dagre-LR' || v === 'dagre-TB') {
+    return { name: 'dagre', rankDir: v.slice(-2), nodeSep: 52, rankSep: 90,
+             edgeSep: 14, padding: 24, animate: false };
+  }
+  if (v === 'cose') return { name: 'cose', padding: 24, animate: false,
+                             nodeRepulsion: 900000, idealEdgeLength: 90 };
+  return { name: 'concentric', padding: 24, animate: false,
+           concentric: function (n) { return n.degree(); }, levelWidth: function () { return 2; } };
+}
+
+var STYLE = [
+  { selector: 'node', style: {
+      'background-color': '#8a8a85', width: 16, height: 16,
+      label: 'data(label)', 'font-size': 9, 'font-family': 'ui-monospace, Menlo, Consolas, monospace',
+      color: '#e8e8e3', 'text-valign': 'bottom', 'text-halign': 'center',
+      'text-margin-y': 3, 'min-zoomed-font-size': 6,
+      'text-background-color': '#121211', 'text-background-opacity': 0.72,
+      'text-background-padding': 1,
+  }},
+  { selector: 'node.docgroup', style: {
+      shape: 'round-rectangle', 'background-color': '#222220', 'background-opacity': 0.5,
+      'border-color': '#3a3a38', 'border-width': 1,
+      label: 'data(label)', 'font-size': 10, color: '#8a8a85',
+      'text-valign': 'top', 'text-margin-y': -4,
+  }},
+  { selector: 'node.docnode', style: {
+      shape: 'round-rectangle', 'background-color': '#30302e',
+      width: 22, height: 14, color: '#8a8a85',
+  }},
+  { selector: 'node.code', style: {
+      shape: 'round-rectangle', 'background-color': '#55554f', width: 20, height: 13,
+      color: '#c3c2b7',
+  }},
+  { selector: 'node.tombstone', style: {
+      'background-color': '#3a3a38', 'border-width': 1.5, 'border-style': 'dashed',
+      'border-color': '#8a8a85', color: '#8a8a85',
+  }},
+  { selector: 'node.ghost', style: {
+      'background-color': '#2a1c1c', 'border-width': 1.5, 'border-style': 'dashed',
+      'border-color': '#e66767', color: '#e66767',
+  }},
+  { selector: 'edge', style: {
+      width: 1.4, 'curve-style': 'bezier',
+      'line-color': '#4a4a45', 'target-arrow-shape': 'triangle',
+      'target-arrow-color': '#4a4a45', 'arrow-scale': 0.75,
+  }},
+  { selector: 'edge.bind', style: {
+      'line-style': 'dashed', 'line-color': '#6a6a63', 'target-arrow-color': '#6a6a63',
+  }},
+  { selector: 'edge.dangle', style: {
+      'line-style': 'dashed', 'line-color': '#e66767', 'target-arrow-color': '#e66767',
+  }},
+  { selector: '.faded', style: { opacity: 0.13 } },
+  { selector: '.hiddenkind', style: { display: 'none' } },
+  { selector: 'node:selected', style: { 'border-width': 2.5, 'border-color': '#ffffff' } },
+];
+Object.keys(KIND_COLOR).forEach(function (cls) {
+  STYLE.push({ selector: 'node.' + cls, style: {
+    'background-color': KIND_COLOR[cls], shape: KIND_SHAPE[cls] || 'ellipse',
+  }});
+});
+
+function render() {
+  if (!model) return;
+  document.getElementById('empty').style.display = 'none';
+  var els = lib.toElements(model, opts());
+  if (cy) cy.destroy();
+  cy = cytoscape({
+    container: document.getElementById('cy'),
+    elements: els, style: STYLE, wheelSensitivity: 0.25,
+  });
+  applyHidden();
+  cy.layout(layoutDef()).run();
+
+  cy.on('tap', 'node', function (ev) { inspect(ev.target); showPane('Node'); });
+  cy.on('tap', function (ev) { if (ev.target === cy) clearInspect(); });
+  cy.on('mouseover', 'node', function (ev) {
+    var hood = ev.target.closedNeighborhood();
+    cy.elements().not(hood).addClass('faded');
+  });
+  cy.on('mouseout', 'node', function () { cy.elements().removeClass('faded'); });
+
+  renderStats();
+  renderLegend();
+  renderFindings();
+}
+
+function renderStats() {
+  var c = model.counts;
+  var health = c.errors ? '<span class="badge err">' + c.errors + ' error' + (c.errors > 1 ? 's' : '') + '</span>'
+             : '<span class="badge ok">clean</span>';
+  var warn = c.warnings ? ' <span class="badge warn">' + c.warnings + ' warn</span>' : '';
+  document.getElementById('stats').innerHTML =
+    '<b>' + c.owned + '</b> owned · <b>' + c.references + '</b> refs · <b>' + c.docs + '</b> docs · ' + health + warn;
+}
+
+function renderLegend() {
+  var counts = {};
+  cy.nodes().forEach(function (n) {
+    var cls = n.classes()[0];
+    counts[cls] = (counts[cls] || 0) + 1;
+  });
+  var host = document.getElementById('legend');
+  host.innerHTML = '';
+  var rows = lib.KIND_CLASSES.map(function (kc) {
+    return { cls: kc.cls, label: kc.label, color: KIND_COLOR[kc.cls] };
+  }).concat([{ cls: 'other', label: 'Other', color: KIND_COLOR.other }], EXTRA_LEGEND);
+  rows.forEach(function (row) {
+    if (!counts[row.cls]) return;
+    var chip = document.createElement('span');
+    chip.className = 'chip' + (hiddenKinds.has(row.cls) ? ' off' : '');
+    chip.innerHTML = '<span class="sw" style="background:' + row.color + '"></span>' +
+      row.label + ' <span class="n">' + counts[row.cls] + '</span>';
+    chip.onclick = function () {
+      if (hiddenKinds.has(row.cls)) hiddenKinds.delete(row.cls); else hiddenKinds.add(row.cls);
+      chip.classList.toggle('off');
+      applyHidden();
+    };
+    host.appendChild(chip);
+  });
+}
+
+function applyHidden() {
+  if (!cy) return;
+  cy.batch(function () {
+    cy.nodes().removeClass('hiddenkind');
+    hiddenKinds.forEach(function (cls) { cy.nodes('.' + cls).addClass('hiddenkind'); });
+  });
+}
+
+function renderFindings() {
+  var host = document.getElementById('paneFindings');
+  host.innerHTML = '';
+  if (!model.findings.length) {
+    host.innerHTML = '<div class="none">No findings — every reference resolves, every binding holds.' +
+      (model.orphans.length ? '<br><br>Unreferenced (orphan) IDs: <span class="mono">' +
+        model.orphans.join(', ') + '</span>' : '') + '</div>';
+    return;
+  }
+  model.findings.forEach(function (f) {
+    var div = document.createElement('div');
+    div.className = 'finding ' + f.sev;
+    div.innerHTML = '<div class="w">' + f.sev + ' [' + f.check + '] · ' + esc(f.where) + '</div>' +
+                    '<div class="m">' + esc(f.msg) + '</div>';
+    div.onclick = function () {
+      var m = /`([^`]+)`/.exec(f.msg) || /::([A-Za-z0-9*_-]+)$/.exec(f.where);
+      if (m && cy) {
+        var n = cy.getElementById('id:' + m[1]);
+        if (n.empty()) n = cy.getElementById('ghost:' + m[1]);
+        if (!n.empty()) { cy.elements().unselect(); n.select(); cy.animate({ center: { eles: n }, zoom: 1.4, duration: 250 }); inspect(n); }
+      }
+    };
+    host.appendChild(div);
+  });
+  if (model.orphans.length) {
+    var div = document.createElement('div');
+    div.className = 'none';
+    div.innerHTML = 'Unreferenced (orphan) IDs: <span class="mono">' + model.orphans.join(', ') + '</span>';
+    host.appendChild(div);
+  }
+}
+
+function inspect(n) {
+  var host = document.getElementById('inspector');
+  var d = n.data(), id = d.id;
+  var html = '<h2 class="mono">' + esc(d.label) + '</h2>';
+  if (id.startsWith('id:')) {
+    var tok = id.slice(3), info = model.owned.get(tok);
+    html += '<div class="kv"><b>kind</b> ' + esc(d.kind) + ' · ' + lib.kindClass(tok) + '</div>';
+    if (info) {
+      if (model.tombstones.has(tok)) html += '<div class="kv"><b>state</b> tombstoned (retired — Part 10d)</div>';
+      html += '<div class="kv"><b>minted</b> <span class="mono">' + esc(info.file) +
+        (info.line ? ':' + info.line : '') + '</span></div>';
+      if (info.text) html += '<div class="reg mono">' + esc(info.text) + '</div>';
+    }
+    html += neighborList(n, 'outgoers', 'references →');
+    html += neighborList(n, 'incomers', '← referenced by');
+    var b = model.bindings && model.bindings.bindings && model.bindings.bindings[tok];
+    if (b && b.locators) {
+      html += '<div class="kv"><b>bound to</b></div><ul>';
+      b.locators.forEach(function (l) {
+        if (l && l.path) html += '<li class="mono">' + esc(l.path) + (l.symbol ? ' · ' + esc(l.symbol) : '') + '</li>';
+      });
+      html += '</ul>';
+    }
+  } else if (id.startsWith('ghost:')) {
+    html += '<div class="kv"><b>state</b> dangling — referenced, never minted, no tombstone</div><ul>';
+    (d.sites || []).forEach(function (s) { html += '<li class="mono">' + esc(s.file) + ':' + s.line + '</li>'; });
+    html += '</ul>';
+  } else if (id.startsWith('code:')) {
+    html += '<div class="kv"><b>code file</b> <span class="mono">' + esc(d.full) + '</span></div>';
+    html += neighborList(n, 'incomers', '← realizes');
+  } else if (id.startsWith('doc:')) {
+    html += '<div class="kv"><b>doc</b> <span class="mono">' + esc(d.full) + '</span></div>';
+    html += neighborList(n, 'outgoers', 'doc-level references →');
+  }
+  host.innerHTML = html;
+}
+
+function neighborList(n, dir, title) {
+  var nodes = (dir === 'outgoers' ? n.outgoers('node') : n.incomers('node'));
+  if (!nodes.length) return '';
+  var html = '<div class="kv"><b>' + title + '</b></div><ul>';
+  nodes.forEach(function (x) {
+    html += '<li><a data-node="' + esc(x.id()) + '" class="mono">' + esc(x.data('label')) + '</a></li>';
+  });
+  return html + '</ul>';
+}
+
+document.getElementById('paneNode').addEventListener('click', function (e) {
+  var t = e.target.closest && e.target.closest('a[data-node]');
+  if (t && cy) {
+    var n = cy.getElementById(t.getAttribute('data-node'));
+    if (!n.empty()) { cy.elements().unselect(); n.select(); cy.animate({ center: { eles: n }, zoom: 1.4, duration: 250 }); inspect(n); }
+  }
+});
+
+function clearInspect() {
+  document.getElementById('inspector').innerHTML = 'Select a node.';
+}
+
+function showPane(which) {
+  var f = which === 'Findings';
+  document.getElementById('tabFindings').classList.toggle('on', f);
+  document.getElementById('tabNode').classList.toggle('on', !f);
+  document.getElementById('paneFindings').classList.toggle('on', f);
+  document.getElementById('paneNode').classList.toggle('on', !f);
+}
+document.getElementById('tabFindings').onclick = function () { showPane('Findings'); };
+document.getElementById('tabNode').onclick = function () { showPane('Node'); };
+
+document.getElementById('layoutSel').onchange = function () { if (cy) cy.layout(layoutDef()).run(); };
+['optDocs', 'optCode', 'optOrph'].forEach(function (id) {
+  document.getElementById(id).onchange = render;
+});
+document.getElementById('searchBox').oninput = function (ev) {
+  if (!cy) return;
+  var q = ev.target.value.trim().toUpperCase();
+  cy.elements().unselect();
+  if (!q) return;
+  var hits = cy.nodes().filter(function (n) {
+    return (n.data('label') || '').toUpperCase().indexOf(q) >= 0;
+  });
+  if (hits.length) { hits.select(); cy.animate({ fit: { eles: hits, padding: 90 }, duration: 200 }); }
+};
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+  });
+}
+
+// test hook: a harness page may pre-inject {path,text} files (no file picker
+// in headless runs); harmless in normal use.
+if (window.__DICTUM_TEST_FILES__) {
+  model = lib.buildWeb(window.__DICTUM_TEST_FILES__);
+  render();
+}
+})();
+</script>
+</body>
+</html>

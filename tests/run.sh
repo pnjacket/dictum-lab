@@ -156,5 +156,36 @@ rm -rf "$TMPD"
 python3 "$TSYNC" "$FIX/code-map/clean" >/dev/null 2>&1
 assert_exit "tracker-sync/no-declaration (declines)" 2 $?
 
+echo "== idweb-viewer (node) =="
+# The viewer's engine is a JS port of dictumlib's grammar + gate-check's
+# idweb/bindings passes — the grammar lives in THREE places (dictumlib.py,
+# gate-check's inline copy, idweb.js); these cases keep the third in sync.
+IDWEB="$TOOLS/idweb-viewer/idweb.js"
+if command -v node >/dev/null 2>&1; then
+  expect_idweb() {
+    out=$(node "$1" "$2" 2>&1)
+    errs=$(echo "$out" | tail -1 | grep -o '^[0-9]\+')
+    if [ "$errs" != "$4" ]; then
+      echo "FAIL $3: expected $4 error(s), got $errs"; echo "$out" | sed 's/^/    /'; fail=1
+    elif [ -n "$5" ] && ! echo "$out" | grep -q "$5"; then
+      echo "FAIL $3: expected pattern not found: $5"; echo "$out" | sed 's/^/    /'; fail=1
+    else
+      echo "PASS $3 ($4 error(s))"
+    fi
+  }
+  expect_idweb "$IDWEB" "$FIX/clean"                        idweb/clean            0 ""
+  expect_idweb "$IDWEB" "$FIX/dangling-id"                  idweb/dangling-id      1 "dangling reference"
+  expect_idweb "$IDWEB" "$FIX/drift-check/clean"            idweb/bindings-clean   0 ""
+  expect_idweb "$IDWEB" "$FIX/drift-check/dangling-binding" idweb/dangling-binding 1 "locator path missing"
+  # grammar sync: the JS finding must equal gate-check's, byte for byte
+  # (modulo gate-check's padded check-name column).
+  js=$(node "$IDWEB" "$FIX/dangling-id" | grep 'dangling reference')
+  py=$(python3 "$GATE" "$FIX/dangling-id" | grep 'dangling reference' | sed 's/\[idweb    \]/[idweb]/')
+  [ -n "$js" ] && [ "$js" = "$py" ] && echo "PASS idweb/grammar-sync (js finding == py finding)" \
+    || { echo "FAIL idweb/grammar-sync"; echo "    js: $js"; echo "    py: $py"; fail=1; }
+else
+  echo "SKIP idweb-viewer: node not available"
+fi
+
 [ "$fail" = 0 ] && echo && echo "corpus: all fixtures pass" || { echo; echo "corpus: FAILURES"; }
 exit $fail
