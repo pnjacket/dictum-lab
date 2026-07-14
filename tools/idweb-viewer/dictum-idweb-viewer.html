@@ -349,9 +349,18 @@ Object.keys(KIND_COLOR).forEach(function (cls) {
   }});
 });
 
+var adaptedForModel = null;
 function render() {
   if (!model) return;
   document.getElementById('empty').style.display = 'none';
+  // adaptive defaults, once per loaded model: a big web starts orphan-less
+  // and organic — a layered ribbon of hundreds of nodes is unreadable.
+  if (adaptedForModel !== model && model.counts.owned > 250) {
+    adaptedForModel = model;
+    document.getElementById('optOrph').checked = false;
+    document.getElementById('layoutSel').value = 'cose';
+  }
+  adaptedForModel = model;
   var els = lib.toElements(model, opts());
   if (cy) cy.destroy();
   cy = cytoscape({
