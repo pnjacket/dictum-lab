@@ -20,7 +20,11 @@ there is a bug *here*.
   Findings flow back to the standard only as distilled rules (failure-mode
   entries, bar changes) via its normal versioned releases.
 - Tools iterate fast here; the standard releases slowly and signed there.
-  Never couple the two cadences.
+  Never couple the two **development** cadences. (Release *tags* are the one
+  exception: at each standard release a matching signed lab tag is cut from a
+  consistent state, snapshotting the lab content the standard cites by anchor
+  — `ANCHORS.md` — so citations are pinned for provenance. That does not gate
+  tool development, which keeps iterating on main between tags.)
 
 ## Hard constraint: describe by shape, never by name
 
