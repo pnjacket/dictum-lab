@@ -1,3 +1,10 @@
+---
+artifact: research-companion
+role: study
+anchor: LAB-STUDY-MODEL-B
+non_normative: true
+---
+
 # Study: the model-B determinism boundary (2026-07) — METHOD STUB
 
 **Question.** The standard's three deferred "future tooling" items (dictum

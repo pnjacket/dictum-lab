@@ -187,5 +187,29 @@ else
   echo "SKIP idweb-viewer: node not available"
 fi
 
+echo "== editorial-lint =="
+# Lints the STANDARD repo's own prose against its Editorial Charter. Non-normative
+# maintenance instrument: WARN heuristics never drive the exit code.
+EDLINT="$TOOLS/editorial-lint/dictum-editorial-lint.py"
+EDFIX="$FIX/editorial-lint"
+expect_tool "$EDLINT" "$EDFIX/clean"             editorial/clean             0 ""
+expect_tool "$EDLINT" "$EDFIX/standard-lab-link" editorial/standard-lab-link 1 "standard-lab-link"
+# Heuristic smells are WARN only: 0 errors, but the warnings must be present.
+out=$(python3 "$EDLINT" "$EDFIX/research-prose" 2>&1); rc=$?
+{ [ $rc -eq 0 ] && echo "$out" | grep -q "research-prose" && echo "$out" | grep -q "migrated-section" \
+    && [ "$(echo "$out" | tail -1 | grep -o '^[0-9]\+')" = "0" ]; } \
+  && echo "PASS editorial/research-prose (0 error(s), WARN-only)" \
+  || { echo "FAIL editorial/research-prose"; echo "$out" | sed 's/^/    /'; fail=1; }
+# forbidden-name needs the (uncommitted-by-charter) denylist via env var.
+DL="$EDFIX/forbidden-name/.editorial-denylist"
+a=$(DICTUM_EDITORIAL_DENYLIST="$DL" python3 "$EDLINT" "$EDFIX/forbidden-name" 2>&1); rc=$?
+errs=$(echo "$a" | tail -1 | grep -o '^[0-9]\+')
+{ [ $rc -eq 1 ] && [ "$errs" = "1" ] && echo "$a" | grep -q "forbidden-name"; } \
+  && echo "PASS editorial/forbidden-name (1 error via env denylist)" \
+  || { echo "FAIL editorial/forbidden-name (exit=$rc errs=$errs)"; echo "$a" | sed 's/^/    /'; fail=1; }
+# Determinism: a re-run must be byte-identical.
+b=$(DICTUM_EDITORIAL_DENYLIST="$DL" python3 "$EDLINT" "$EDFIX/forbidden-name" 2>&1)
+[ "$a" = "$b" ] && echo "PASS editorial/deterministic-output" || { echo "FAIL editorial/deterministic-output"; fail=1; }
+
 [ "$fail" = 0 ] && echo && echo "corpus: all fixtures pass" || { echo; echo "corpus: FAILURES"; }
 exit $fail

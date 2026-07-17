@@ -1,3 +1,10 @@
+---
+artifact: research-companion
+role: study
+anchor: LAB-STUDY-VALIDATION-BUILDS
+non_normative: true
+---
+
 # Method validation — four builds and a regeneration-fidelity control
 
 **Status:** write-up of completed trials, relocated here from the standard
