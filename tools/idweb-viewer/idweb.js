@@ -198,7 +198,7 @@ function discover(files) {
   var manifestPath = first(['docs/manifest.yaml', 'manifest.yaml']);
   var bindingsPath = first(['docs/bindings.yaml', 'bindings.yaml']);
   var standardDir = null;
-  ['dictum', 'docs/dictum', 'keystone', 'docs/keystone'].some(function (d) {
+  ['dictum', 'docs/dictum'].some(function (d) {
     var hit = false;
     byPath.forEach(function (_, p) { if (p === d || p.startsWith(d + '/')) hit = true; });
     if (hit) standardDir = d;

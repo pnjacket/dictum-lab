@@ -133,7 +133,7 @@ def discover(root):
             if os.path.exists(p): return p
         return None
     manifest = first('docs/manifest.yaml', 'manifest.yaml')
-    standard = first('dictum', 'docs/dictum', 'keystone', 'docs/keystone')
+    standard = first('dictum', 'docs/dictum')
     bindings = first('docs/bindings.yaml', 'bindings.yaml')
     docs = []
     for pat in ('docs/*.md', 'docs/concerns/*.md', '*.md'):
