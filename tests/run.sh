@@ -211,5 +211,43 @@ errs=$(echo "$a" | tail -1 | grep -o '^[0-9]\+')
 b=$(DICTUM_EDITORIAL_DENYLIST="$DL" python3 "$EDLINT" "$EDFIX/forbidden-name" 2>&1)
 [ "$a" = "$b" ] && echo "PASS editorial/deterministic-output" || { echo "FAIL editorial/deterministic-output"; fail=1; }
 
+echo "== provenance-check =="
+# Source-provenance checker (Dictum failure-mode #36, Governance 11.8). Decides
+# the DECLARED side exactly (a SOURCE: marker's license vs the product outbound);
+# the UNDECLARED side is undecidable and is never flagged (boundary probe).
+PROV="$TOOLS/provenance-check/dictum-provenance-check.py"
+PFIX="$FIX/provenance-check"
+expect_tool "$PROV" "$PFIX/clean"                  provenance/clean                  0 ""
+expect_tool "$PROV" "$PFIX/incompatible-declared"  provenance/incompatible-declared  1 "incompatible-license"
+# malformed marker: license unparseable -> WARN only, 0 errors, exit 0.
+out=$(python3 "$PROV" "$PFIX/malformed-marker" 2>&1); rc=$?
+{ [ $rc -eq 0 ] && echo "$out" | grep -q "malformed-marker" \
+    && [ "$(echo "$out" | tail -1 | grep -o '^[0-9]\+')" = "0" ]; } \
+  && echo "PASS provenance/malformed-marker (0 error(s), WARN-only)" \
+  || { echo "FAIL provenance/malformed-marker"; echo "$out" | sed 's/^/    /'; fail=1; }
+# Boundary probe: an unmarked copy is the undecidable residual -> 0/0, NOT flagged.
+out=$(python3 "$PROV" "$PFIX/unmarked" 2>&1); rc=$?
+{ [ $rc -eq 0 ] && [ "$(echo "$out" | tail -1)" = "0 error(s), 0 warning(s)" ]; } \
+  && echo "PASS provenance/unmarked (honest miss: 0/0, undeclared copy not flagged)" \
+  || { echo "FAIL provenance/unmarked"; echo "$out" | sed 's/^/    /'; fail=1; }
+# --outbound: the SAME GPL marker is a defect under MIT but clean under GPL outbound.
+out=$(python3 "$PROV" "$PFIX/incompatible-declared" --outbound GPL-3.0-or-later 2>&1); rc=$?
+{ [ $rc -eq 0 ] && [ "$(echo "$out" | tail -1 | grep -o '^[0-9]\+')" = "0" ]; } \
+  && echo "PASS provenance/--outbound (GPL source clean under GPL outbound)" \
+  || { echo "FAIL provenance/--outbound"; echo "$out" | sed 's/^/    /'; fail=1; }
+# Heuristic fingerprint scan is WARN-only and never drives the exit code, even
+# when a configured tell-tale phrase matches the (still-unmarked) unit.
+FPL=$(mktemp); printf '# custom fingerprint list\nbit-twiddling\n' > "$FPL"
+out=$(python3 "$PROV" "$PFIX/unmarked" --fingerprints "$FPL" 2>&1); rc=$?
+{ [ $rc -eq 0 ] && echo "$out" | grep -q "unmarked-copy-heuristic" \
+    && [ "$(echo "$out" | tail -1 | grep -o '^[0-9]\+')" = "0" ]; } \
+  && echo "PASS provenance/fingerprint-heuristic (WARN-only, non-authoritative)" \
+  || { echo "FAIL provenance/fingerprint-heuristic"; echo "$out" | sed 's/^/    /'; fail=1; }
+rm -f "$FPL"
+# Determinism: two runs must be byte-identical.
+a=$(python3 "$PROV" "$PFIX/incompatible-declared" 2>&1)
+b=$(python3 "$PROV" "$PFIX/incompatible-declared" 2>&1)
+[ "$a" = "$b" ] && echo "PASS provenance/deterministic-output" || { echo "FAIL provenance/deterministic-output"; fail=1; }
+
 [ "$fail" = 0 ] && echo && echo "corpus: all fixtures pass" || { echo; echo "corpus: FAILURES"; }
 exit $fail
