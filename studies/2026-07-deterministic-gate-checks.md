@@ -1,3 +1,10 @@
+---
+artifact: research-companion
+role: study
+anchor: LAB-STUDY-GATE-CHECKS
+non_normative: true
+---
+
 # Study: deterministic tools for Dictum's gates (2026-07)
 
 **Question.** Which of the standard's gate checks are mechanically decidable,

@@ -1,0 +1,4 @@
+# Denylist for the forbidden-name fixture — INVENTED, safe terms only.
+# One term per line; blank lines and #-comments ignored; case-insensitive
+# substring match. Never place a real forbidden name in a committed file.
+acmewidget
