@@ -22,6 +22,7 @@ mirroring the standard's owned-once discipline.
 | `LAB-STUDY-VALIDATION-BUILDS` | `studies/2026-07-method-validation-builds.md` | The four validation builds, the regeneration-fidelity control, and the blind-rebuild trial — the evidence behind the failure-mode catalog. |
 | `LAB-STUDY-MODEL-B` | `studies/2026-07-model-b-tooling.md` | The deterministic (model-B) determinism-boundary study: what a deterministic tool can decide with certainty, and where certainty ends. |
 | `LAB-STUDY-GATE-CHECKS` | `studies/2026-07-deterministic-gate-checks.md` | The deterministic gate-check study (decidable gate checks over the standard's extension points). |
+| `LAB-STUDY-SOURCE-PROVENANCE` | `studies/2026-07-source-provenance.md` | The source-provenance determinism boundary: a declared `SOURCE:` marker's license vs the outbound is decidable and exact; undeclared copying is undecidable and recorded as residual, never cleared. |
 
 ## Concern notes (worked examples & design rationale)
 
