@@ -23,6 +23,7 @@ mirroring the standard's owned-once discipline.
 | `LAB-STUDY-MODEL-B` | `studies/2026-07-model-b-tooling.md` | The deterministic (model-B) determinism-boundary study: what a deterministic tool can decide with certainty, and where certainty ends. |
 | `LAB-STUDY-GATE-CHECKS` | `studies/2026-07-deterministic-gate-checks.md` | The deterministic gate-check study (decidable gate checks over the standard's extension points). |
 | `LAB-STUDY-SOURCE-PROVENANCE` | `studies/2026-07-source-provenance.md` | The source-provenance determinism boundary: a declared `SOURCE:` marker's license vs the outbound is decidable and exact; undeclared copying is undecidable and recorded as residual, never cleared. |
+| `LAB-STUDY-ASSUMPTION-ACCOUNTING` | `studies/2026-07-assumption-accounting.md` | Whether an assumption behaves like a **node**: promoting a depended-on `[ASSUMPTION]` to an owned `ASSUMPTION-###` kind so falsification propagates through the existing ID web — with the falsifiers that would kill it. |
 
 ## Concern notes (worked examples & design rationale)
 
