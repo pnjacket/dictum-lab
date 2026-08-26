@@ -38,6 +38,7 @@ entries and bar changes — through its normal versioned-release process.
 | [`fixtures/`](fixtures) | Synthetic fixtures — conforming and deliberately broken — that regression-test the tooling without touching any real product. Each pins the standard version it targets; broken ones encode exactly one defect, named by directory; boundary probes assert that tools *decline* rather than guess. Top-level dirs belong to gate-check; per-tool corpora live under `fixtures/<tool>/`. |
 | [`studies/`](studies) | Trial write-ups. Products are described **by shape** (traits, scale, build history), never by name. |
 | [`PROTOCOL.md`](PROTOCOL.md) | How trials are run, so the method behind the evidence is reproducible. |
+| [`METHOD-EDIT-LOOP.md`](METHOD-EDIT-LOOP.md) | How to run an audit/fix loop without paying for it twice — editing rules, mechanism-design rules, and the intake-saturation schemas, each with the cycle it cost to learn. |
 | [`tests/run.sh`](tests/run.sh) | Runs every tool across the fixture corpus and asserts expected findings, loud declines, and byte-identical re-runs. |
 
 ## Quickstart
