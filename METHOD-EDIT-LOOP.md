@@ -20,10 +20,11 @@ dropped the first time it is inconvenient.
 
 ## 0. The single most valuable thing in this document
 
-**Most of what an audit loop finds late, an interview could have decided early —
-and the decisions are not arbitrary, they are instances of ten fixed question
-schemas.** Read §4 before you start authoring. It is worth more than the rest of
-this document combined.
+**Roughly two thirds of what an audit loop finds late, an interview could have
+decided early — and those decisions are not arbitrary, they are instances of ten
+fixed question schemas.** Read §4 before you start authoring. It is worth more than
+the rest of this document combined. The other third are editing defects that no
+interview prevents; §2 and §3 are for those.
 
 The second most valuable: **fixing the span an audit points at is not the same as
 fixing the sentence it lives in.** One paragraph in our trial was revised in four
@@ -38,9 +39,13 @@ its neighbour.
 analyse  →  fix  →  add a mechanism  →  re-audit
 ```
 
-The third step is the one people skip, and skipping it is why loops do not
-converge. In our trial the passes that added no mechanism did not reduce the next
-pass's finding rate; the passes that added one did.
+The third step is the one people skip. Be clear about what it buys, because we
+overclaimed it once: **adding a mechanism closes a class permanently, but it does
+not shorten the loop while new classes are still surfacing.** In our trial the
+blocker count did not fall for twelve passes after mechanisms began — it fell when
+the *taxonomy* saturated, not when the mechanism count rose. Build them anyway:
+each one is a class that will never cost you again, and the fifteen in the study
+are a taxonomy you can start from instead of rediscovering.
 
 **Stop conditions.** Two, and only two: the audit comes out clean, or a finding
 needs a decision that is genuinely the operator's. Everything else is work to do,
@@ -136,9 +141,9 @@ Build one per pass, from the class you just met — not from a list of good idea
 
 **Re-break the original defect and confirm the check fails.**
 
-Of the last five mechanisms we built, **three shipped broken** — one with three
-defects at once — and every one of them reported a clean run while checking
-nothing. The re-break test caught all of them and nothing else did. A new
+**Every one of the last five mechanisms we built was found defective after
+reporting a clean run** — one of them with three defects at once — and two earlier
+ones were too. The re-break test caught all of them and nothing else did. A new
 mechanism's green run is not evidence; it is an untested claim.
 
 ### Design rules
@@ -180,6 +185,32 @@ produced eleven consecutive passes of blockers in our trial.
   payload schema, UI state.
 
 One walks a new path against its **guards**; the other against its **readers**.
+
+#### Rebuildable specs
+
+Enough to reimplement cold. The reference implementation lives in the subject
+repo's own checker, which is outside this repository; nothing below depends on it.
+
+**Arrow ledger.** Extract every line inside a fenced block containing a transition
+arrow. Normalise whitespace. Key each on `(file, normalised line, ordinal among
+identical lines in that file)` — *not* on the line number, which re-keys every arm
+below an insertion and produced forty findings for one change; and *not* on the
+bare line, which collides when two arms are drawn identically, as the two arms into
+an absorbing state were. Store `hash file line text`. On each run, report entries
+present-but-unrecorded (a new arm) **and recorded-but-absent** (a removed arm — the
+shape a set that prefers retreat will hit). Give it **its own** acceptance flag.
+
+**Cause ledger.** For each value of the enum that names your conditions, extract the
+clauses of the authoritative raise-site paragraph that name it, and hash
+`(kind, those clauses)` — folding the kind name in, or two kinds with no clause
+collide on the empty string. On change, fail with the reader list spelled out in the
+message: routing row's *trigger and severity*, runbook *title and body*, error-row
+meaning, payload schema, UI state. Assert your anchors — the enum and the paragraph
+— and fail loudly if either moves rather than passing vacuously.
+
+Both are gates, not checks: they cannot decide correctness, only that something
+changed and has not been re-walked. That is the right shape for a class whose
+defining property is that nothing changed at the defect site.
 
 ---
 
@@ -256,6 +287,8 @@ In order of expected saving:
 1. **Run §4's schemas during intake**, per element, and record the answers as the
    element is minted. Most of our loop was an interview conducted through an
    auditor, one decision per cycle, with a full re-read of the set between each.
+   Expect this to remove roughly two thirds of the defect classes and none of the
+   editing ones — see the study's class-to-schema mapping for which is which.
 2. **Build the arrow ledger and the cause ledger before the first audit**, not at
    pass 53 and 54. They are cheap and they cover the most expensive classes.
 3. **Adopt the re-break test from the first mechanism**, not the fifth.

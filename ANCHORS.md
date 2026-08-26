@@ -24,7 +24,7 @@ mirroring the standard's owned-once discipline.
 | `LAB-STUDY-GATE-CHECKS` | `studies/2026-07-deterministic-gate-checks.md` | The deterministic gate-check study (decidable gate checks over the standard's extension points). |
 | `LAB-STUDY-SOURCE-PROVENANCE` | `studies/2026-07-source-provenance.md` | The source-provenance determinism boundary: a declared `SOURCE:` marker's license vs the outbound is decidable and exact; undeclared copying is undecidable and recorded as residual, never cleared. |
 | `LAB-STUDY-ASSUMPTION-ACCOUNTING` | `studies/2026-07-assumption-accounting.md` | Whether an assumption behaves like a **node**: promoting a depended-on `[ASSUMPTION]` to an owned `ASSUMPTION-###` kind so falsification propagates through the existing ID web — with the falsifiers that would kill it. |
-| `LAB-STUDY-AUDIT-FIX-LOOP` | `studies/2026-08-audit-fix-loop.md` | Whether an audit/fix loop converges: a fifteen-class defect taxonomy, the fifteen mechanisms built against it, the rate at which mechanisms themselves ship broken, and the finding that most cycles were unmade product decisions rather than documentation defects. |
+| `LAB-STUDY-AUDIT-FIX-LOOP` | `studies/2026-08-audit-fix-loop.md` | Whether an audit/fix loop converges: a fifteen-class defect taxonomy and the ten intake schemas derived from it, the fifteen mechanisms built against the taxonomy, the rate at which mechanisms themselves ship broken, and the finding that the loop's length is set by the size of the taxonomy rather than the fix rate — most cycles being unmade product decisions rather than documentation defects. |
 
 ## Method
 
