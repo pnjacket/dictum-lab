@@ -25,6 +25,13 @@ mirroring the standard's owned-once discipline.
 | `LAB-STUDY-SOURCE-PROVENANCE` | `studies/2026-07-source-provenance.md` | The source-provenance determinism boundary: a declared `SOURCE:` marker's license vs the outbound is decidable and exact; undeclared copying is undecidable and recorded as residual, never cleared. |
 | `LAB-STUDY-ASSUMPTION-ACCOUNTING` | `studies/2026-07-assumption-accounting.md` | Whether an assumption behaves like a **node**: promoting a depended-on `[ASSUMPTION]` to an owned `ASSUMPTION-###` kind so falsification propagates through the existing ID web — with the falsifiers that would kill it. |
 | `LAB-STUDY-AUDIT-FIX-LOOP` | `studies/2026-08-audit-fix-loop.md` | Whether an audit/fix loop converges: a fifteen-class defect taxonomy and the ten intake schemas derived from it, the fifteen mechanisms built against the taxonomy, the rate at which mechanisms themselves ship broken, and the finding that the loop's length is set by the size of the taxonomy rather than the fix rate — most cycles being unmade product decisions rather than documentation defects. |
+| `LAB-STUDY-ANNOTATION-RECALL` | `studies/2026-09-annotation-recall.md` | What in-code ID annotation buys: measured exact-ID recall with and without markers across two products, the finding that recall is set by marker coverage rather than quality, that a partial marker set suppresses discovery of everything it does not name, and that recovery is the weakest of the benefits worth citing. |
+
+## Practices
+
+| Anchor | Path | What |
+|---|---|---|
+| `LAB-PRACTICE-ANNOTATE-BROWNFIELD` | `practices/annotate-after-brownfield.md` | Annotating code with contract IDs as a separate, consent-gated step after a brownfield adoption — why doc-led builds get it free, what it buys in the recurring lifecycle rather than in recovery, what it costs, and why the unit of the decision is the contract kind. |
 
 ## Method
 
