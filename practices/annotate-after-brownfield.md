@@ -79,6 +79,22 @@ Some contracts have **no code site whatsoever** — a persona, a success criteri
 something is *absent*. There is nothing to annotate, and a marker manufactured near a topically
 related line is worse than the gap it hides.
 
+## What four validation rounds showed about writing the rule down
+
+The completeness rule is the hard part to state, and it fails in **both** directions if written loosely.
+Written with no exemptions it forbids annotating the kind that most repays it, because one member of an
+otherwise markable kind has no code site. Written with exemptions it hollows out: a kind marked at one
+site of eight still reads as "complete" once each of the other seven carries an excuse, which rebuilds
+the inventory illusion the rule exists to prevent. Both were observed, in the same round, on two repos.
+
+What holds is narrower than either: exemptions explain a gap and never close it, and the marked-over-total
+ratio is reported per kind regardless of how well each absence is excused.
+
+Two further lessons from the same rounds. **A binding-map locator is a starting point, not a site** —
+taken verbatim it stacks markers on one coarse line and can cost a whole kind. And **an instruction that
+asserts a fact about the target repo will eventually be wrong**: measured baselines, line endings and
+comment carriers all have to be established by the pass, not supplied to it.
+
 ## Sequencing
 
 Adopt (Part 10f) → close the interview's open markers → **then** annotate, with consent → then the
