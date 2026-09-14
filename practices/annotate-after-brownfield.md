@@ -95,6 +95,35 @@ taken verbatim it stacks markers on one coarse line and can cost a whole kind. A
 asserts a fact about the target repo will eventually be wrong**: measured baselines, line endings and
 comment carriers all have to be established by the pass, not supplied to it.
 
+## Four shapes observed in validation and deliberately left unstated as rules
+
+Recorded because they were real and resolved, and *not* written into the instruction, because each rests
+on a single observation. A rule generalised from one run is how a false claim about the size of the
+anchor pass got in and had to be retracted later.
+
+**Code that binds downward without being a comment.** Several ecosystems place annotations — code, not
+comments — immediately above a declaration, bound to it. The placement rule speaks about comment blocks
+and a comment-shaped directive, so it does not reach these. One pass extended the directive exception to
+cover them and placed its markers above the whole run; another met the shape and had no occasion to mark
+there. One resolution, not two, so the gap stands open.
+
+**A marker that joins an existing block inherits its leader and its indentation — and nothing says what
+terminator it takes.** Moot in a file of uniform line endings, decisive in one carrying islands of a
+second ending inside a dominant one, where the wrong choice places the marker correctly and still
+corrupts the neighbourhood. The observed resolution was to take the terminator of the line being marked.
+
+**Whether a documentation-comment grammar admits a plain trailing line is a property of the grammar, not
+of the repo's configuration.** A project that leaves its documentation generation switched off emits no
+diagnostics whatever is written in those blocks — which proves only that they are unparsed *there*.
+Forcing the generation on answered the question generally: the line survived as valid mixed content. The
+permissive answer obtained the easy way would not have generalised. Where the toolchain is absent
+entirely the question cannot be settled empirically at all, and the pass has to say so rather than
+assume.
+
+**The IDs of a set are not all minted under one heading.** Sweeping a single conventional heading
+under-counted one set by five per cent, missing two entire prefixes minted under another. Derive the ID
+set from mint sites, not from the heading they usually sit beneath.
+
 ## Sequencing
 
 Adopt (Part 10f) → close the interview's open markers → **then** annotate, with consent → then the
