@@ -8,10 +8,16 @@ non_normative: true
 # Study: what in-code ID annotation actually buys (2026-09)
 
 **Question.** The standard recommends tagging each realizing code site with its contract's
-`DICT: <ID>` marker, and states that reverse-authoring the same codebase with and without such
-annotation recovers structure about equally, while exact-ID recall "falls from roughly half to
-near-zero" without it (STANDARD Part 10f; catalog #28). Two things were untested: whether those
-figures hold, and whether recovery is even the benefit worth citing.
+`DICT: <ID>` marker, and claims that reverse-authoring recovers *structure* at high fidelity with or
+without the markers, while what a code artifact **cannot** yield on its own is each contract's stable
+**ID** (STANDARD Part 10f; catalog #28, "exact-ID recovery collapses"). Two things were untested: how
+far the identity claim holds once measured, and whether recovery is even the benefit worth citing.
+
+**What this study was originally aimed at, corrected.** It was designed against a *numeric* form of the
+claim — exact-ID recall "falls from roughly half to near-zero" — which the standard carried at
+**v1.0.0 only**. That sentence was removed at v1.1.0, two releases before this study ran, and the
+current text makes the categorical claim above instead. Everything below is reported against the
+current text; the withdrawn v1.0.0 figures are noted only where the data happens to contradict them.
 
 ## Subject (by shape)
 
@@ -32,15 +38,18 @@ give each an ID, and label each ID recovered or coined. Output was compared agai
 doc set. Verified before comparing: the two copies differed only by marker lines, and the unmarked copy
 contained zero contract-ID tokens.
 
-## Finding 1 — the standard's figures are wrong in both directions
+## Finding 1 — the identity claim is right about the mechanism, wrong as an absolute
 
 | | unmarked | marked |
 |---|---|---|
 | Product A | 41% | 92% |
 | Product B | 30% | 69% |
 
-Annotation roughly doubles exact-ID recall, which supports the recommendation. But "near-zero" without
-it is wrong by a wide margin in both products, and "roughly half" understates the annotated case.
+Annotation roughly doubles exact-ID recall, which supports the recommendation. But an un-annotated pass
+does not recover *nothing*: it recovers 41% and 30%. So "cannot yield the stable ID" is right about the
+mechanism — Finding 3 shows recovery is confined entirely to contracts the code names — and wrong read
+as an absolute. Against the withdrawn v1.0.0 figures: "near-zero" was wrong by a wide margin in both
+products, and "roughly half" understated the annotated case.
 
 ## Finding 2 — recall is set by coverage, not by quality
 
@@ -68,6 +77,10 @@ went from 6/9 and 7/9 to zero and zero, those kinds having carried no markers.
 The reading: an extractor handed markers treats them as the inventory and stops discovering. So partial
 annotation is worse than none for the unmarked remainder, and the unit of the decision is the **kind**
 (`LAB-PRACTICE-ANNOTATE-BROWNFIELD`).
+
+This finding was contributed upstream and is now **STANDARD Part 10f + failure-mode #37**. It is the
+only part of this study that changed the standard; Finding 1 calibrated a claim the standard already
+made correctly in mechanism, and did not.
 
 ## Finding 5 — recovery is the wrong justification
 
